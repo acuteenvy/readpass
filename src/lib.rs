@@ -39,6 +39,8 @@ use windows as sys;
 
 pub use sys::from_tty;
 
+const CTRL_U: char = char::from_u32(21).unwrap();
+
 /// Reads a password from an `impl BufRead`.
 ///
 /// This only reads the first line from the reader.
@@ -51,12 +53,10 @@ pub fn from_bufread(reader: &mut impl BufRead) -> io::Result<Zeroizing<String>> 
     password.truncate(len);
 
     // Ctrl-U should remove the line in terminals.
-    if password.contains('') {
-        password = match password.rfind('') {
-            Some(last_ctrl_u_index) => password[last_ctrl_u_index + 1..].to_string().into(),
-            None => password,
-        };
-    }
+    password = match password.rfind(CTRL_U) {
+        Some(last_ctrl_u_index) => password[last_ctrl_u_index + 1..].to_string().into(),
+        None => password,
+    };
 
     Ok(password)
 }
@@ -124,11 +124,16 @@ mod tests {
     fn can_read_from_input_ctrl_u() {
         close_stdin();
 
-        let mut reader_ctrl_u = Cursor::new(&b"A mocked response.Another mocked response.\n"[..]);
+        let s = format!(
+            "A mocked response.{}Another mocked response.\n",
+            super::CTRL_U
+        );
+        let mut reader_ctrl_u = Cursor::new(s.as_bytes());
         let response = super::from_bufread(&mut reader_ctrl_u).unwrap();
         assert_eq!(*response, "Another mocked response.");
 
-        let mut reader_ctrl_u_at_end = Cursor::new(&b"A mocked response.\n"[..]);
+        let s = format!("A mocked response.{}\n", super::CTRL_U);
+        let mut reader_ctrl_u_at_end = Cursor::new(s.as_bytes());
         let response = super::from_bufread(&mut reader_ctrl_u_at_end).unwrap();
         assert_eq!(*response, "");
     }
