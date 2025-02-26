@@ -1,5 +1,11 @@
 # readpass
 
+[![CI](https://img.shields.io/github/actions/workflow/status/acuteenvy/readpass/ci.yml?label=CI&logo=github&style=flat-square)](https://github.com/acuteenvy/readpass/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/readpass?logo=rust&style=flat-square)](https://crates.io/crates/readpass)
+[![MSRV](https://img.shields.io/crates/msrv/readpass?logo=rust&style=flat-square)](https://crates.io/crates/readpass)
+[![crates.io downloads](https://img.shields.io/crates/d/readpass?logo=rust&style=flat-square)](https://crates.io/crates/readpass)
+[![license](https://img.shields.io/github/license/acuteenvy/readpass?style=flat-square)](/LICENSE-APACHE)
+
 `readpass` makes it easy to read passwords from Rust code in console applications on Unix-like OSes and Windows.
 It's similar to the C function `getpass()` or Python's `getpass` module.
 
