@@ -19,6 +19,9 @@
 //! let passwd = readpass::from_tty()?;
 //! # Ok::<(), io::Error>(())
 //!```
+//!
+//! [`String`]s returned by `readpass` are wrapped in [`Zeroizing`]
+//! to ensure the password is zeroized from memory after it's [`Drop`]ped.
 
 use std::io::{self, BufRead};
 
@@ -39,7 +42,7 @@ pub use sys::from_tty;
 /// Reads a password from an `impl BufRead`.
 ///
 /// This only reads the first line from the reader.
-/// Newlines and carriage returns are trimmed from the end of the resulting `String`.
+/// Newlines and carriage returns are trimmed from the end of the resulting [`String`].
 pub fn from_bufread(reader: &mut impl BufRead) -> io::Result<Zeroizing<String>> {
     let mut password = Zeroizing::new(String::new());
     reader.read_line(&mut password)?;

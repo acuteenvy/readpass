@@ -1,7 +1,7 @@
 # readpass
 
 `readpass` makes it easy to read passwords from Rust code in console applications on Unix-like OSes and Windows.
-It's similar to Linux's C function `getpass()` or Python's `getpass` module.
+It's similar to the C function `getpass()` or Python's `getpass` module.
 
 ## Usage
 
@@ -20,12 +20,15 @@ write!(io::stderr(), "Please enter a password: ")?;
 let passwd = readpass::from_tty()?;
 ```
 
-Docs: [https://docs.rs/readpass](https://docs.rs/readpass).
+Strings returned by `readpass` are wrapped in [`Zeroizing`](https://docs.rs/zeroize/latest/zeroize/struct.Zeroizing.html)
+to ensure the password is zeroized from memory after it's `Drop`ped.
+
+Docs: <https://docs.rs/readpass>.
 
 ## License
 
 The source code is released under the Apache 2.0 license.
-This is a fork of [rpassword](https://github.com/conradkleinespel/rpassword) by Conrad Kleinespiel.
+This is a fork of [rpassword](https://github.com/conradkleinespel/rpassword) by Conrad Kleinespel.
 The original code rolls its own version of [zeroize](https://github.com/RustCrypto/utils/tree/master/zeroize),
 in the [rtoolbox](https://docs.rs/rtoolbox/0.0.2/rtoolbox/safe_string/struct.SafeString.html) crate.
 This crate aims to change that.
