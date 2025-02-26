@@ -1,22 +1,20 @@
 [package]
-name = "rpassword"
-version = "7.3.1"
-authors = ["Conrad Kleinespel <conradk@conradk.com>"]
-description = "Read passwords in console applications."
+name = "readpass"
+version = "0.1.0"
+authors = ["Conrad Kleinespel <conradk@conradk.com>", "acuteenvy"]
+description = "Read passwords in console applications"
 license = "Apache-2.0"
-homepage = "https://github.com/conradkleinespel/rpassword"
-repository = "https://github.com/conradkleinespel/rpassword"
-documentation = "https://docs.rs/rpassword/"
-readme = "README.md"
+homepage = "https://github.com/acuteenvy/readpass"
+repository = "https://github.com/acuteenvy/readpass"
 keywords = ["read", "password", "security", "pass", "getpass"]
-edition = "2018"
-rust-version = "1.60"
+edition = "2021"
+rust-version = "1.63"
+
+[dependencies]
+zeroize = "1.8"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.52", features = ["Win32_Foundation", "Win32_System_Console", "Win32_Storage_FileSystem", "Win32_Security", "Win32_System_SystemServices"] }
-
-[dependencies]
-rtoolbox = { path = "../rtoolbox", version = "0.0" }
