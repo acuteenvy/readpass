@@ -84,4 +84,48 @@ mod tests {
         let response = super::from_bufread(&mut reader_lf).unwrap();
         assert_eq!(*response, "Another mocked response.");
     }
+
+    // These tests check whether or not we can read from a reader when
+    // stdin is not a terminal.
+
+    #[cfg(unix)]
+    fn close_stdin() {
+        unsafe {
+            libc::close(libc::STDIN_FILENO);
+        }
+    }
+
+    #[cfg(windows)]
+    fn close_stdin() {
+        use windows_sys::Win32::Foundation::CloseHandle;
+        use windows_sys::Win32::System::Console::{GetStdHandle, STD_INPUT_HANDLE};
+
+        unsafe {
+            CloseHandle(GetStdHandle(STD_INPUT_HANDLE));
+        }
+    }
+
+    #[cfg(not(any(unix, windows)))]
+    fn close_stdin() {
+        unimplemented!()
+    }
+
+    #[test]
+    fn can_read_from_redirected_input_many_times_nostdin() {
+        close_stdin();
+        can_read_from_redirected_input_many_times();
+    }
+
+    #[test]
+    fn can_read_from_input_ctrl_u() {
+        close_stdin();
+
+        let mut reader_ctrl_u = Cursor::new(&b"A mocked response.Another mocked response.\n"[..]);
+        let response = super::from_bufread(&mut reader_ctrl_u).unwrap();
+        assert_eq!(*response, "Another mocked response.");
+
+        let mut reader_ctrl_u_at_end = Cursor::new(&b"A mocked response.\n"[..]);
+        let response = super::from_bufread(&mut reader_ctrl_u_at_end).unwrap();
+        assert_eq!(*response, "");
+    }
 }
