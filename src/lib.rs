@@ -1,5 +1,5 @@
 //! Read passwords without displaying them on the terminal.
-//! Works on Unix OSes and Windows.
+//! Works on Unix-like OSes and Windows.
 //!
 //! # Usage
 //!
@@ -8,16 +8,17 @@
 //!```rust,no_run
 //! let passwd = readpass::from_tty()?;
 //! # Ok::<(), std::io::Error>(())
-//! ```
+//!```
 //!
 //! If you want to display a prompt, print it to stdout or stderr before reading:
-//! ```rust,no_run
+//!
+//!```rust,no_run
 //! use std::io::{self, Write};
 //!
 //! writeln!(io::stderr(), "Please enter a password: ")?;
 //! let passwd = readpass::from_tty()?;
 //! # Ok::<(), io::Error>(())
-//! ```
+//!```
 
 use std::io::{self, BufRead};
 
@@ -31,7 +32,6 @@ mod windows;
 #[cfg(target_family = "windows")]
 use windows as sys;
 
-/// Reads a password from the TTY.
 pub use sys::from_tty;
 
 /// Reads a password from an `impl BufRead`.
@@ -41,35 +41,24 @@ pub fn from_bufread(reader: &mut impl BufRead) -> io::Result<String> {
     let mut password = String::new();
     reader.read_line(&mut password)?;
 
-    fix_line_issues(password)
+    Ok(handle_ctrl_u(trim_cr_lf(password)))
 }
 
-/// Normalizes the return of `read_line()` in the context of a CLI application.
-fn fix_line_issues(mut line: String) -> io::Result<String> {
-    if !line.ends_with('\n') {
-        return Err(io::Error::new(
-            io::ErrorKind::UnexpectedEof,
-            "unexpected end of file",
-        ));
-    }
+fn trim_cr_lf(mut line: String) -> String {
+    let len = line.trim_end_matches(&['\r', '\n'][..]).len();
+    line.truncate(len);
+    line
+}
 
-    // Remove the \n from the line.
-    line.pop();
-
-    // Remove the \r from the line if present
-    if line.ends_with('\r') {
-        line.pop();
-    }
-
-    // Ctrl-U should remove the line in terminals
+fn handle_ctrl_u(mut line: String) -> String {
+    // Ctrl-U should remove the line in terminals.
     if line.contains('') {
         line = match line.rfind('') {
             Some(last_ctrl_u_index) => line[last_ctrl_u_index + 1..].to_string(),
             None => line,
         };
     }
-
-    Ok(line)
+    line
 }
 
 #[cfg(test)]

@@ -54,6 +54,7 @@ fn safe_tcgetattr(fd: c_int) -> io::Result<termios> {
     Ok(unsafe { term.assume_init() })
 }
 
+/// Reads a password from the TTY.
 pub fn from_tty() -> io::Result<String> {
     let tty = File::open("/dev/tty")?;
     let fd = tty.as_raw_fd();
@@ -64,11 +65,6 @@ pub fn from_tty() -> io::Result<String> {
 
 /// Reads a password from a given file descriptor.
 fn from_fd_with_hidden_input(reader: &mut impl BufRead, fd: i32) -> io::Result<String> {
-    let mut password = String::new();
-    let hidden_input = HiddenInput::new(fd)?;
-
-    reader.read_line(&mut password)?;
-    drop(hidden_input);
-
-    super::fix_line_issues(password)
+    let _hidden_input = HiddenInput::new(fd)?;
+    super::from_bufread(reader)
 }

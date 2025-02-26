@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{self, BufRead, BufReader};
+use std::io::{self, BufRead, BufReader, Write};
 use std::os::windows::io::FromRawHandle;
 
 use windows_sys::core::PCSTR;
@@ -44,6 +44,7 @@ impl Drop for HiddenInput {
     }
 }
 
+/// Reads a password from the TTY.
 pub fn from_tty() -> io::Result<String> {
     let handle = unsafe {
         CreateFileA(
@@ -67,18 +68,10 @@ pub fn from_tty() -> io::Result<String> {
 
 /// Reads a password from a given file handle.
 fn from_handle_with_hidden_input(reader: &mut impl BufRead, handle: HANDLE) -> io::Result<String> {
-    let mut password = String::new();
-    let hidden_input = HiddenInput::new(handle)?;
-
-    let reader_return = reader.read_line(&mut password);
+    let _hidden_input = HiddenInput::new(handle)?;
+    let reader_return = super::from_bufread(reader);
 
     // Newline for windows which otherwise prints on the same line.
-    writeln!(io::stdout())?;
-
-    if reader_return.is_err() {
-        return Err(reader_return.unwrap_err());
-    }
-
-    drop(hidden_input);
-    super::fix_line_issues(password)
+    io::stdout().write_all(b"\n")?;
+    reader_return
 }
