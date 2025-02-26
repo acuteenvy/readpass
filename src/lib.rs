@@ -1,67 +1,62 @@
-//! This library makes it easy to read passwords in a console application on all platforms, Unix,
-//! Windows, WASM, etc.
+//! Read passwords without displaying them on the terminal.
+//! Works on Unix OSes and Windows.
 //!
-//! Here's how you can read a password:
-//! ```no_run
-//! let password = rpassword::read_password().unwrap();
-//! println!("Your password is {}", password);
+//! # Usage
+//!
+//! Read a password:
+//!
+//!```rust,no_run
+//! let passwd = readpass::from_tty()?;
+//! # Ok::<(), std::io::Error>(())
 //! ```
 //!
-//! You can also prompt for a password:
-//! ```no_run
-//! let password = rpassword::prompt_password("Your password: ").unwrap();
-//! println!("Your password is {}", password);
-//! ```
+//! If you want to display a prompt, print it to stdout or stderr before reading:
+//! ```rust,no_run
+//! use std::io::{self, Write};
 //!
-//! Finally, in unit tests, you might want to pass a `Cursor`, which implements `BufRead`. In that
-//! case, you can use `read_password_from_bufread` and `prompt_password_from_bufread`:
-//! ```
-//! use std::io::Cursor;
-//!
-//! let mut mock_input = Cursor::new("my-password\n".as_bytes().to_owned());
-//! let password = rpassword::read_password_from_bufread(&mut mock_input).unwrap();
-//! println!("Your password is {}", password);
-//!
-//! let mut mock_input = Cursor::new("my-password\n".as_bytes().to_owned());
-//! let mut mock_output = Cursor::new(Vec::new());
-//! let password = rpassword::prompt_password_from_bufread(&mut mock_input, &mut mock_output, "Your password: ").unwrap();
-//! println!("Your password is {}", password);
+//! writeln!(io::stderr(), "Please enter a password: ")?;
+//! let passwd = readpass::from_tty()?;
+//! # Ok::<(), io::Error>(())
 //! ```
 
-use rtoolbox::fix_line_issues::fix_line_issues;
-use rtoolbox::print_tty::{print_tty, print_writer};
-use rtoolbox::safe_string::SafeString;
-use std::io::{BufRead, Write};
+use std::io::{self, BufRead};
 
-#[cfg(target_family = "wasm")]
-mod wasm {
-    use std::io::{self, BufRead};
-
-    /// Reads a password from the TTY
-    pub fn read_password() -> std::io::Result<String> {
-        let tty = std::fs::File::open("/dev/tty")?;
-        let mut reader = io::BufReader::new(tty);
-
-        read_password_from_fd_with_hidden_input(&mut reader)
+/// Normalizes the return of `read_line()` in the context of a CLI application.
+fn fix_line_issues(mut line: String) -> io::Result<String> {
+    if !line.ends_with('\n') {
+        return Err(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
+            "unexpected end of file",
+        ));
     }
 
-    /// Reads a password from a given file descriptor
-    fn read_password_from_fd_with_hidden_input(
-        reader: &mut impl BufRead,
-    ) -> std::io::Result<String> {
-        let mut password = super::SafeString::new();
+    // Remove the \n from the line.
+    line.pop();
 
-        reader.read_line(&mut password)?;
-        super::fix_line_issues(password.into_inner())
+    // Remove the \r from the line if present
+    if line.ends_with('\r') {
+        line.pop();
     }
+
+    // Ctrl-U should remove the line in terminals
+    if line.contains('') {
+        line = match line.rfind('') {
+            Some(last_ctrl_u_index) => line[last_ctrl_u_index + 1..].to_string(),
+            None => line,
+        };
+    }
+
+    Ok(line)
 }
 
 #[cfg(target_family = "unix")]
 mod unix {
-    use libc::{c_int, tcsetattr, termios, ECHO, ECHONL, TCSANOW};
-    use std::io::{self, BufRead};
-    use std::mem;
+    use std::fs::File;
+    use std::io::{self, BufRead, BufReader};
+    use std::mem::MaybeUninit;
     use std::os::unix::io::AsRawFd;
+
+    use libc::{c_int, tcsetattr, termios, ECHO, ECHONL, TCSANOW};
 
     struct HiddenInput {
         fd: i32,
@@ -98,53 +93,51 @@ mod unix {
         }
     }
 
-    /// Turns a C function return into an IO Result
-    fn io_result(ret: c_int) -> std::io::Result<()> {
+    /// Turns a C function return into an IO Result.
+    fn io_result(ret: c_int) -> io::Result<()> {
         match ret {
             0 => Ok(()),
-            _ => Err(std::io::Error::last_os_error()),
+            _ => Err(io::Error::last_os_error()),
         }
     }
 
-    fn safe_tcgetattr(fd: c_int) -> std::io::Result<termios> {
-        let mut term = mem::MaybeUninit::<termios>::uninit();
+    fn safe_tcgetattr(fd: c_int) -> io::Result<termios> {
+        let mut term = MaybeUninit::<termios>::uninit();
         io_result(unsafe { ::libc::tcgetattr(fd, term.as_mut_ptr()) })?;
         Ok(unsafe { term.assume_init() })
     }
 
-    /// Reads a password from the TTY
-    pub fn read_password() -> std::io::Result<String> {
-        let tty = std::fs::File::open("/dev/tty")?;
+    /// Reads a password from the TTY.
+    pub fn from_tty() -> io::Result<String> {
+        let tty = File::open("/dev/tty")?;
         let fd = tty.as_raw_fd();
-        let mut reader = io::BufReader::new(tty);
+        let mut reader = BufReader::new(tty);
 
-        read_password_from_fd_with_hidden_input(&mut reader, fd)
+        from_fd_with_hidden_input(&mut reader, fd)
     }
 
-    /// Reads a password from a given file descriptor
-    fn read_password_from_fd_with_hidden_input(
-        reader: &mut impl BufRead,
-        fd: i32,
-    ) -> std::io::Result<String> {
-        let mut password = super::SafeString::new();
-
+    /// Reads a password from a given file descriptor.
+    fn from_fd_with_hidden_input(reader: &mut impl BufRead, fd: i32) -> io::Result<String> {
+        let mut password = String::new();
         let hidden_input = HiddenInput::new(fd)?;
 
         reader.read_line(&mut password)?;
+        drop(hidden_input);
 
-        std::mem::drop(hidden_input);
-
-        super::fix_line_issues(password.into_inner())
+        super::fix_line_issues(password)
     }
 }
 
 #[cfg(target_family = "windows")]
 mod windows {
-    use std::io::BufRead;
-    use std::io::{self, BufReader};
+    use std::fs::File;
+    use std::io::{self, BufRead, BufReader};
     use std::os::windows::io::FromRawHandle;
+
     use windows_sys::core::PCSTR;
-    use windows_sys::Win32::Foundation::{GENERIC_READ, GENERIC_WRITE, HANDLE, INVALID_HANDLE_VALUE};
+    use windows_sys::Win32::Foundation::{
+        GENERIC_READ, GENERIC_WRITE, HANDLE, INVALID_HANDLE_VALUE,
+    };
     use windows_sys::Win32::Storage::FileSystem::{
         CreateFileA, FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING,
     };
@@ -169,7 +162,7 @@ mod windows {
             // We want to be able to read line by line, and we still want backspace to work
             let new_mode_flags = ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT;
             if unsafe { SetConsoleMode(handle, new_mode_flags) } == 0 {
-                return Err(std::io::Error::last_os_error());
+                return Err(io::Error::last_os_error());
             }
 
             Ok(HiddenInput { mode, handle })
@@ -185,8 +178,8 @@ mod windows {
         }
     }
 
-    /// Reads a password from the TTY
-    pub fn read_password() -> std::io::Result<String> {
+    /// Reads a password from the TTY.
+    pub fn from_tty() -> io::Result<String> {
         let handle = unsafe {
             CreateFileA(
                 b"CONIN$\x00".as_ptr() as PCSTR,
@@ -200,65 +193,48 @@ mod windows {
         };
 
         if handle == INVALID_HANDLE_VALUE {
-            return Err(std::io::Error::last_os_error());
+            return Err(io::Error::last_os_error());
         }
 
-        let mut stream = BufReader::new(unsafe { std::fs::File::from_raw_handle(handle as _) });
-        read_password_from_handle_with_hidden_input(&mut stream, handle)
+        let mut stream = BufReader::new(unsafe { File::from_raw_handle(handle as _) });
+        from_handle_with_hidden_input(&mut stream, handle)
     }
 
-    /// Reads a password from a given file handle
-    fn read_password_from_handle_with_hidden_input(
+    /// Reads a password from a given file handle.
+    fn from_handle_with_hidden_input(
         reader: &mut impl BufRead,
         handle: HANDLE,
     ) -> io::Result<String> {
-        let mut password = super::SafeString::new();
-
+        let mut password = String::new();
         let hidden_input = HiddenInput::new(handle)?;
 
         let reader_return = reader.read_line(&mut password);
 
         // Newline for windows which otherwise prints on the same line.
-        println!();
+        writeln!(io::stdout())?;
 
         if reader_return.is_err() {
             return Err(reader_return.unwrap_err());
         }
 
-        std::mem::drop(hidden_input);
-
-        super::fix_line_issues(password.into_inner())
+        drop(hidden_input);
+        super::fix_line_issues(password)
     }
 }
 
 #[cfg(target_family = "unix")]
-pub use unix::read_password;
-#[cfg(target_family = "wasm")]
-pub use wasm::read_password;
+pub use unix::from_tty;
 #[cfg(target_family = "windows")]
-pub use windows::read_password;
+pub use windows::from_tty;
 
-/// Reads a password from `impl BufRead`
-pub fn read_password_from_bufread(reader: &mut impl BufRead) -> std::io::Result<String> {
-    let mut password = SafeString::new();
+/// Reads a password from an `impl BufRead`.
+///
+/// This only reads the first line from the reader.
+pub fn from_bufread(reader: &mut impl BufRead) -> io::Result<String> {
+    let mut password = String::new();
     reader.read_line(&mut password)?;
 
-    fix_line_issues(password.into_inner())
-}
-
-/// Prompts on `impl Write` and then reads a password from `impl BufRead`
-pub fn prompt_password_from_bufread(
-    reader: &mut impl BufRead,
-    writer: &mut impl Write,
-    prompt: impl ToString,
-) -> std::io::Result<String> {
-    print_writer(writer, prompt.to_string().as_str())
-        .and_then(|_| read_password_from_bufread(reader))
-}
-
-/// Prompts on the TTY and then reads a password from TTY
-pub fn prompt_password(prompt: impl ToString) -> std::io::Result<String> {
-    print_tty(prompt.to_string().as_str()).and_then(|_| read_password())
+    fix_line_issues(password)
 }
 
 #[cfg(test)]
@@ -277,15 +253,15 @@ mod tests {
     fn can_read_from_redirected_input_many_times() {
         let mut reader_crlf = mock_input_crlf();
 
-        let response = super::read_password_from_bufread(&mut reader_crlf).unwrap();
+        let response = super::from_bufread(&mut reader_crlf).unwrap();
         assert_eq!(response, "A mocked response.");
-        let response = super::read_password_from_bufread(&mut reader_crlf).unwrap();
+        let response = super::from_bufread(&mut reader_crlf).unwrap();
         assert_eq!(response, "Another mocked response.");
 
         let mut reader_lf = mock_input_lf();
-        let response = super::read_password_from_bufread(&mut reader_lf).unwrap();
+        let response = super::from_bufread(&mut reader_lf).unwrap();
         assert_eq!(response, "A mocked response.");
-        let response = super::read_password_from_bufread(&mut reader_lf).unwrap();
+        let response = super::from_bufread(&mut reader_lf).unwrap();
         assert_eq!(response, "Another mocked response.");
     }
 }
