@@ -16,7 +16,7 @@ If you want to display a prompt, print it to stdout or stderr before reading:
 ```rust
 use std::io::{self, Write};
 
-writeln!(io::stderr(), "Please enter a password: ")?;
+write!(io::stderr(), "Please enter a password: ")?;
 let passwd = readpass::from_tty()?;
 ```
 

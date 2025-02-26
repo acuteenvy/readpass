@@ -15,7 +15,7 @@
 //!```rust,no_run
 //! use std::io::{self, Write};
 //!
-//! writeln!(io::stderr(), "Please enter a password: ")?;
+//! write!(io::stderr(), "Please enter a password: ")?;
 //! let passwd = readpass::from_tty()?;
 //! # Ok::<(), io::Error>(())
 //!```
@@ -39,6 +39,7 @@ pub use sys::from_tty;
 /// Reads a password from an `impl BufRead`.
 ///
 /// This only reads the first line from the reader.
+/// Newlines and carriage returns are trimmed from the end of the resulting `String`.
 pub fn from_bufread(reader: &mut impl BufRead) -> io::Result<Zeroizing<String>> {
     let mut password = Zeroizing::new(String::new());
     reader.read_line(&mut password)?;

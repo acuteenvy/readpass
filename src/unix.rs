@@ -56,6 +56,8 @@ fn safe_tcgetattr(fd: c_int) -> io::Result<termios> {
 }
 
 /// Reads a password from the TTY.
+///
+/// Newlines and carriage returns are trimmed from the end of the resulting `String`.
 pub fn from_tty() -> io::Result<Zeroizing<String>> {
     let tty = File::open("/dev/tty")?;
     let fd = tty.as_raw_fd();
