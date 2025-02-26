@@ -22,6 +22,8 @@
 
 use std::io::{self, BufRead};
 
+use zeroize::Zeroizing;
+
 #[cfg(target_family = "unix")]
 mod unix;
 #[cfg(target_family = "unix")]
@@ -37,28 +39,22 @@ pub use sys::from_tty;
 /// Reads a password from an `impl BufRead`.
 ///
 /// This only reads the first line from the reader.
-pub fn from_bufread(reader: &mut impl BufRead) -> io::Result<String> {
-    let mut password = String::new();
+pub fn from_bufread(reader: &mut impl BufRead) -> io::Result<Zeroizing<String>> {
+    let mut password = Zeroizing::new(String::new());
     reader.read_line(&mut password)?;
 
-    Ok(handle_ctrl_u(trim_cr_lf(password)))
-}
+    let len = password.trim_end_matches(&['\r', '\n'][..]).len();
+    password.truncate(len);
 
-fn trim_cr_lf(mut line: String) -> String {
-    let len = line.trim_end_matches(&['\r', '\n'][..]).len();
-    line.truncate(len);
-    line
-}
-
-fn handle_ctrl_u(mut line: String) -> String {
     // Ctrl-U should remove the line in terminals.
-    if line.contains('') {
-        line = match line.rfind('') {
-            Some(last_ctrl_u_index) => line[last_ctrl_u_index + 1..].to_string(),
-            None => line,
+    if password.contains('') {
+        password = match password.rfind('') {
+            Some(last_ctrl_u_index) => password[last_ctrl_u_index + 1..].to_string().into(),
+            None => password,
         };
     }
-    line
+
+    Ok(password)
 }
 
 #[cfg(test)]
@@ -78,14 +74,14 @@ mod tests {
         let mut reader_crlf = mock_input_crlf();
 
         let response = super::from_bufread(&mut reader_crlf).unwrap();
-        assert_eq!(response, "A mocked response.");
+        assert_eq!(*response, "A mocked response.");
         let response = super::from_bufread(&mut reader_crlf).unwrap();
-        assert_eq!(response, "Another mocked response.");
+        assert_eq!(*response, "Another mocked response.");
 
         let mut reader_lf = mock_input_lf();
         let response = super::from_bufread(&mut reader_lf).unwrap();
-        assert_eq!(response, "A mocked response.");
+        assert_eq!(*response, "A mocked response.");
         let response = super::from_bufread(&mut reader_lf).unwrap();
-        assert_eq!(response, "Another mocked response.");
+        assert_eq!(*response, "Another mocked response.");
     }
 }

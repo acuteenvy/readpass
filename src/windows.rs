@@ -10,6 +10,7 @@ use windows_sys::Win32::Storage::FileSystem::{
 use windows_sys::Win32::System::Console::{
     GetConsoleMode, SetConsoleMode, CONSOLE_MODE, ENABLE_LINE_INPUT, ENABLE_PROCESSED_INPUT,
 };
+use zeroize::Zeroizing;
 
 struct HiddenInput {
     mode: u32,
@@ -45,7 +46,7 @@ impl Drop for HiddenInput {
 }
 
 /// Reads a password from the TTY.
-pub fn from_tty() -> io::Result<String> {
+pub fn from_tty() -> io::Result<Zeroizing<String>> {
     let handle = unsafe {
         CreateFileA(
             b"CONIN$\x00".as_ptr() as PCSTR,
@@ -67,7 +68,10 @@ pub fn from_tty() -> io::Result<String> {
 }
 
 /// Reads a password from a given file handle.
-fn from_handle_with_hidden_input(reader: &mut impl BufRead, handle: HANDLE) -> io::Result<String> {
+fn from_handle_with_hidden_input(
+    reader: &mut impl BufRead,
+    handle: HANDLE,
+) -> io::Result<Zeroizing<String>> {
     let _hidden_input = HiddenInput::new(handle)?;
     let reader_return = super::from_bufread(reader);
 
