@@ -1,12 +1,19 @@
 [package]
 name = "readpass"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["Conrad Kleinespel <conradk@conradk.com>", "acuteenvy"]
-description = "Read passwords in console applications"
+description = "A tiny library for reading passwords without displaying them on the terminal"
 license = "Apache-2.0"
 homepage = "https://github.com/acuteenvy/readpass"
 repository = "https://github.com/acuteenvy/readpass"
-keywords = ["read", "password", "security", "pass", "getpass"]
+categories = ["command-line-interface"]
+keywords = [
+    "read",
+    "password",
+    "security",
+    "pass",
+    "getpass",
+]
 edition = "2021"
 rust-version = "1.63"
 
@@ -16,5 +23,17 @@ zeroize = "1.8"
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
-[target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_Console", "Win32_Storage_FileSystem", "Win32_Security", "Win32_System_SystemServices"] }
+[target.'cfg(windows)'.dependencies.windows-sys]
+version = "0.59"
+features = [
+    "Win32_Foundation",
+    "Win32_System_Console",
+    "Win32_Storage_FileSystem",
+    "Win32_Security",
+    "Win32_System_SystemServices"
+]
+
+[lints.clippy]
+all = "warn"
+pedantic = "warn"
+style = "warn"
