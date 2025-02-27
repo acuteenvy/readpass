@@ -6,7 +6,7 @@
 [![crates.io downloads](https://img.shields.io/crates/d/readpass?logo=rust&style=flat-square)](https://crates.io/crates/readpass)
 [![license](https://img.shields.io/github/license/acuteenvy/readpass?style=flat-square)](/LICENSE-APACHE)
 
-`readpass` makes it easy to read passwords from Rust code in console applications on Unix-like OSes and Windows.
+A tiny library for reading passwords without displaying them on the terminal.
 It's similar to the C function `getpass()` or Python's `getpass` module.
 
 ## Usage
