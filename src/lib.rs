@@ -1,4 +1,4 @@
-//! Read passwords without displaying them on the terminal.
+//! A tiny library for reading passwords without displaying them on the terminal.
 //! Works on Unix-like OSes and Windows.
 //!
 //! # Usage
@@ -27,14 +27,14 @@ use std::io::{self, BufRead};
 
 use zeroize::Zeroizing;
 
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 mod unix;
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 use unix as sys;
 
-#[cfg(target_family = "windows")]
+#[cfg(windows)]
 mod windows;
-#[cfg(target_family = "windows")]
+#[cfg(windows)]
 use windows as sys;
 
 pub use sys::from_tty;
@@ -45,7 +45,7 @@ const CTRL_U: char = char::from_u32(21).unwrap();
 ///
 /// This only reads the first line from the reader.
 /// Newlines and carriage returns are trimmed from the end of the resulting [`String`].
-pub fn from_bufread(reader: &mut impl BufRead) -> io::Result<Zeroizing<String>> {
+fn from_bufread(reader: &mut impl BufRead) -> io::Result<Zeroizing<String>> {
     let mut password = Zeroizing::new(String::new());
     reader.read_line(&mut password)?;
 
