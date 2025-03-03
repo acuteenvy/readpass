@@ -1,11 +1,11 @@
 [package]
 name = "readpass"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Conrad Kleinespel <conradk@conradk.com>", "acuteenvy"]
 description = "A tiny library for reading passwords without displaying them on the terminal"
 license = "Apache-2.0"
-homepage = "https://github.com/acuteenvy/readpass"
 repository = "https://github.com/acuteenvy/readpass"
+documentation = "https://docs.rs/readpass"
 categories = ["command-line-interface"]
 keywords = [
     "read",
