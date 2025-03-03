@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{self, BufRead, BufReader, Write};
+use std::io::{self, BufReader, Write};
 use std::os::windows::io::FromRawHandle;
 
 use windows_sys::core::PCSTR;
@@ -21,12 +21,12 @@ impl HiddenInput {
     fn new(handle: HANDLE) -> io::Result<HiddenInput> {
         let mut mode = 0;
 
-        // Get the old mode so we can reset back to it when we are done
+        // Get the old mode, so that we can reset back to it when we are done.
         if unsafe { GetConsoleMode(handle, &mut mode as *mut CONSOLE_MODE) } == 0 {
             return Err(std::io::Error::last_os_error());
         }
 
-        // We want to be able to read line by line, and we still want backspace to work
+        // We want to be able to read line by line, and we still want backspace to work.
         let new_mode_flags = ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT;
         if unsafe { SetConsoleMode(handle, new_mode_flags) } == 0 {
             return Err(io::Error::last_os_error());
@@ -38,7 +38,7 @@ impl HiddenInput {
 
 impl Drop for HiddenInput {
     fn drop(&mut self) {
-        // Set the the mode back to normal
+        // Set the mode back to normal.
         unsafe {
             SetConsoleMode(self.handle, self.mode);
         }
@@ -69,19 +69,12 @@ pub fn from_tty() -> io::Result<Zeroizing<String>> {
         return Err(io::Error::last_os_error());
     }
 
-    let mut stream = BufReader::new(unsafe { File::from_raw_handle(handle as _) });
-    from_handle_with_hidden_input(&mut stream, handle)
-}
+    let mut reader = BufReader::new(unsafe { File::from_raw_handle(handle as _) });
 
-/// Reads a password from a given file handle.
-fn from_handle_with_hidden_input(
-    reader: &mut impl BufRead,
-    handle: HANDLE,
-) -> io::Result<Zeroizing<String>> {
     let _hidden_input = HiddenInput::new(handle)?;
-    let reader_return = super::from_bufread(reader);
+    let reader_return = crate::from_bufread(&mut reader);
 
-    // Newline for windows which otherwise prints on the same line.
+    // Print a newline on Windows (otherwise whatever is printed next will be on the same line).
     io::stdout().write_all(b"\n")?;
     reader_return
 }
