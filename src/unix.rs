@@ -1,9 +1,9 @@
 use std::fs::File;
-use std::io::{self, BufRead, BufReader};
+use std::io::{self, BufReader};
 use std::mem::MaybeUninit;
 use std::os::unix::io::AsRawFd;
 
-use libc::{c_int, tcsetattr, termios, ECHO, ECHONL, TCSANOW};
+use libc::{c_int, tcgetattr, tcsetattr, termios, ECHO, ECHONL, TCSANOW};
 use zeroize::Zeroizing;
 
 struct HiddenInput {
@@ -16,8 +16,10 @@ impl HiddenInput {
         // Make two copies of the terminal settings. The first one will be modified
         // and the second one will act as a backup for when we want to set the
         // terminal back to its original state.
-        let mut term = safe_tcgetattr(fd)?;
-        let term_orig = safe_tcgetattr(fd)?;
+        let mut term_uninit = MaybeUninit::<termios>::uninit();
+        io_result(unsafe { tcgetattr(fd, term_uninit.as_mut_ptr()) })?;
+        let mut term = unsafe { term_uninit.assume_init() };
+        let term_orig = term;
 
         // Hide the password. This is what makes this function useful.
         term.c_lflag &= !ECHO;
@@ -34,7 +36,7 @@ impl HiddenInput {
 
 impl Drop for HiddenInput {
     fn drop(&mut self) {
-        // Set the the mode back to normal
+        // Set the the mode back to normal.
         unsafe {
             tcsetattr(self.fd, TCSANOW, &self.term_orig);
         }
@@ -49,12 +51,6 @@ fn io_result(ret: c_int) -> io::Result<()> {
     }
 }
 
-fn safe_tcgetattr(fd: c_int) -> io::Result<termios> {
-    let mut term = MaybeUninit::<termios>::uninit();
-    io_result(unsafe { ::libc::tcgetattr(fd, term.as_mut_ptr()) })?;
-    Ok(unsafe { term.assume_init() })
-}
-
 /// Reads a password from the TTY.
 ///
 /// Newlines and carriage returns are trimmed from the end of the resulting `String`.
@@ -67,11 +63,6 @@ pub fn from_tty() -> io::Result<Zeroizing<String>> {
     let fd = tty.as_raw_fd();
     let mut reader = BufReader::new(tty);
 
-    from_fd_with_hidden_input(&mut reader, fd)
-}
-
-/// Reads a password from a given file descriptor.
-fn from_fd_with_hidden_input(reader: &mut impl BufRead, fd: i32) -> io::Result<Zeroizing<String>> {
     let _hidden_input = HiddenInput::new(fd)?;
-    super::from_bufread(reader)
+    crate::from_bufread(&mut reader)
 }
