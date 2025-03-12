@@ -39,7 +39,7 @@ use windows as sys;
 
 pub use sys::from_tty;
 
-const CTRL_U: char = char::from_u32(21).unwrap();
+const CTRL_U: char = 21 as char;
 
 /// Reads a password from an `impl BufRead`.
 ///
