@@ -27,16 +27,12 @@ use std::io::{self, BufRead};
 
 use zeroize::Zeroizing;
 
-#[cfg(unix)]
-mod unix;
-#[cfg(unix)]
-use unix as sys;
+#[cfg(not(any(unix, windows)))]
+compile_error!("only Unix-like OSes and Windows are supported!");
 
-#[cfg(windows)]
-mod windows;
-#[cfg(windows)]
-use windows as sys;
-
+#[cfg_attr(unix, path = "unix.rs")]
+#[cfg_attr(windows, path = "windows.rs")]
+mod sys;
 pub use sys::from_tty;
 
 const CTRL_U: char = 21 as char;
