@@ -1,5 +1,7 @@
 # Unreleased
 
+# 1.0.2
+
 * Fix compilation error on 1.63 to maintain MSRV
 
 # 1.0.1
