@@ -1,6 +1,9 @@
 # Unreleased
 
+# 1.1.0
+
 * Bump MSRV to 1.71, because `windows-sys` 0.61 requires Rust >= 1.71
+* Bump `windows-sys` to 0.61
 
 # 1.0.3
 
