@@ -103,11 +103,6 @@ mod tests {
         }
     }
 
-    #[cfg(not(any(unix, windows)))]
-    fn close_stdin() {
-        unimplemented!()
-    }
-
     #[test]
     fn can_read_from_redirected_input_many_times_nostdin() {
         close_stdin();
