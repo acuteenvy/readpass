@@ -2,14 +2,14 @@ use std::fs::File;
 use std::io::{self, BufReader, Write};
 use std::os::windows::io::FromRawHandle;
 
-use windows_sys::core::PCSTR;
 use windows_sys::Win32::Foundation::{GENERIC_READ, GENERIC_WRITE, HANDLE, INVALID_HANDLE_VALUE};
 use windows_sys::Win32::Storage::FileSystem::{
     CreateFileA, FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING,
 };
 use windows_sys::Win32::System::Console::{
-    GetConsoleMode, SetConsoleMode, CONSOLE_MODE, ENABLE_LINE_INPUT, ENABLE_PROCESSED_INPUT,
+    CONSOLE_MODE, ENABLE_LINE_INPUT, ENABLE_PROCESSED_INPUT, GetConsoleMode, SetConsoleMode,
 };
+use windows_sys::core::PCSTR;
 use zeroize::Zeroizing;
 
 struct HiddenInput {

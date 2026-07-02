@@ -3,7 +3,7 @@ use std::io::{self, BufReader};
 use std::mem::MaybeUninit;
 use std::os::unix::io::AsRawFd;
 
-use libc::{c_int, tcgetattr, tcsetattr, termios, ECHO, ECHONL, TCSANOW};
+use libc::{ECHO, ECHONL, TCSANOW, c_int, tcgetattr, tcsetattr, termios};
 use zeroize::Zeroizing;
 
 struct HiddenInput {
