@@ -1,5 +1,10 @@
 # Unreleased
 
+# 1.2.0
+
+* Bump MSRV to 1.85, because `zeroize` 1.9 requires Rust >= 1.85
+* Switch to Rust 2024
+
 # 1.1.0
 
 * Bump MSRV to 1.71, because `windows-sys` 0.61 requires Rust >= 1.71
