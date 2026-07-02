@@ -49,12 +49,10 @@ fn from_bufread(reader: &mut impl BufRead) -> io::Result<Zeroizing<String>> {
     password.truncate(len);
 
     // Ctrl-U should remove the line in terminals.
-    password = match password.rfind(CTRL_U) {
-        Some(last_ctrl_u_index) => Zeroizing::new(password[last_ctrl_u_index + 1..].to_string()),
-        None => password,
-    };
-
-    Ok(password)
+    match password.rfind(CTRL_U) {
+        Some(last_ctrl_u_idx) => Ok(Zeroizing::new(password[last_ctrl_u_idx + 1..].to_string())),
+        None => Ok(password),
+    }
 }
 
 #[cfg(test)]
