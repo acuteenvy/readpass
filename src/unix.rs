@@ -28,7 +28,7 @@ impl HiddenInput {
         term.c_lflag |= ECHONL;
 
         // Save the settings for now.
-        io_result(unsafe { tcsetattr(fd, TCSANOW, &term) })?;
+        io_result(unsafe { tcsetattr(fd, TCSANOW, &raw const term) })?;
 
         Ok(HiddenInput { fd, term_orig })
     }
@@ -38,7 +38,7 @@ impl Drop for HiddenInput {
     fn drop(&mut self) {
         // Set the the mode back to normal.
         unsafe {
-            tcsetattr(self.fd, TCSANOW, &self.term_orig);
+            tcsetattr(self.fd, TCSANOW, &raw const self.term_orig);
         }
     }
 }
